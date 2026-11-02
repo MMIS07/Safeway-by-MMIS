@@ -1,58 +1,66 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 const KEY = "sp-theme";
-const ThemeCtx = createContext({ mode: "system", resolved: "light", setMode: () => {} });
+const EVT = "safeway:theme";
+export const THEME_MODES = ["light", "dark"];
 
-function storedMode() {
+// First visit (or an old saved "system" value): start from the device's preference once,
+// then the visitor's own choice is remembered.
+function read() {
   try {
     const saved = localStorage.getItem(KEY);
-    if (saved === "light" || saved === "dark" || saved === "system") return saved;
+    if (THEME_MODES.includes(saved)) return saved;
   } catch {
-    /* private mode: fall through to system */
+    /* private mode: fall through to the device preference */
   }
-  return "system";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-function systemIsDark() {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
+let mode = read();
+
+function apply() {
+  const root = document.documentElement;
+  root.classList.toggle("dark", mode === "dark"); // Tailwind darkMode: "class"
+  root.setAttribute("data-theme", mode);
+  root.style.colorScheme = mode;
 }
 
-function applyResolved(resolved) {
-  document.documentElement.classList.toggle("dark", resolved === "dark");
-  document.documentElement.style.colorScheme = resolved;
+function notify() {
+  window.dispatchEvent(new Event(EVT));
 }
 
+// Apply as soon as this module loads
+apply();
+window.addEventListener("storage", (e) => {
+  if (e.key === KEY) { mode = read(); apply(); notify(); }
+});
+
+export function setThemeMode(next) {
+  mode = next === "dark" ? "dark" : "light";
+  try {
+    localStorage.setItem(KEY, mode);
+  } catch {
+    /* private mode: preference lasts for the session */
+  }
+  apply();
+  notify();
+}
+
+/** The mode a one-click toggle moves to: light <-> dark. */
+export const nextThemeMode = (m) => (m === "dark" ? "light" : "dark");
+
+function subscribe(cb) {
+  window.addEventListener(EVT, cb);
+  return () => window.removeEventListener(EVT, cb);
+}
+
+/** Kept so existing imports keep working. The theme is applied by this module, so the provider just renders children. */
 export function ThemeProvider({ children }) {
-  const [mode, setModeState] = useState(storedMode);
-  const [systemDark, setSystemDark] = useState(systemIsDark);
-  const resolved = mode === "system" ? (systemDark ? "dark" : "light") : mode;
-
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
-    const query = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = (e) => setSystemDark(e.matches);
-    query.addEventListener("change", onChange);
-    return () => query.removeEventListener("change", onChange);
-  }, []);
-
-  useEffect(() => {
-    applyResolved(resolved);
-    try {
-      localStorage.setItem(KEY, mode);
-    } catch {
-      /* private mode: preference lasts for the session */
-    }
-  }, [mode, resolved]);
-
-  return (
-    <ThemeCtx.Provider value={{ mode, resolved, setMode: setModeState }}>
-      {children}
-    </ThemeCtx.Provider>
-  );
+  return <>{children}</>;
 }
 
-export const useTheme = () => useContext(ThemeCtx);
+/** { mode: "light" | "dark", resolved: "light" | "dark", setMode } (resolved equals mode, kept for existing callers) */
+export function useTheme() {
+  const current = useSyncExternalStore(subscribe, () => mode, () => "light");
+  return { mode: current, resolved: current, setMode: setThemeMode };
+}

@@ -7,18 +7,104 @@ import { BeuiCard, BeuiInput } from "../components/beui/beui";
 import { BeuiTabs, BeuiTabsList, BeuiTab } from "../components/beui/BeuiTabs";
 import MapView from "../components/MapView";
 import { geocode, fetchRoutes, useGeolocation, emptyPointMessage } from "../services/geo";
+import { useLang } from "../lib/lang";
+
+const DICT = {
+  en: {
+    title: "Find a safe route",
+    subtitle: "Address search with road geometry drawn per search. Safety colors arrive with the API connection.",
+    fastest: "Fastest",
+    shortest: "Shortest",
+    from: "From",
+    to: "Destination",
+    fromPh: "Your address or current location",
+    toPh: "Anywhere in Bangladesh",
+    myLocation: "Your current location",
+    useMyLoc: "Use my location",
+    locating: "Locating…",
+    findRoute: "Find route",
+    finding: "Finding route…",
+    loading: "Geocoding addresses & fetching the road network…",
+    chipTo: "Route to ",
+    chipDefault: "Your route",
+    safetyPending: "Safety check pending",
+    geomPre: "Road geometry is fetched per search. Waterlogging scoring lights up once",
+    geomPost: "is connected.",
+    routesFound: (n) => `${n} route${n > 1 ? "s" : ""} found on the road network`,
+    selected: "Selected",
+    alternative: "Alternative",
+    min: "min",
+    km: "km",
+    recommended: "Recommended route",
+    alternate: "Alternate route",
+    routeDesc: "Driving geometry for the addresses above. Safety check pending API connection. Tap to preview.",
+    howTitle: "How safety scoring will attach",
+    howBody: "Each segment gets a safety multiplier (clear, unverified, reported, waterlogged) and the cheapest safe path wins. The green, yellow, and red overlay draws on this exact geometry once connected.",
+    emptyTitle: "Type a destination to see its route on the map",
+    emptyBody: "Addresses are geocoded across Bangladesh. Your origin can be your current GPS position.",
+    suggestions: "Address suggestions",
+    searching: "Searching addresses…",
+    notFound: (q) => `Could not find "${q}". Try a nearby landmark.`,
+    generic: "Something went wrong. Try again.",
+  },
+  bn: {
+    title: "নিরাপদ রুট খুঁজুন",
+    subtitle: "ঠিকানা দিয়ে খুঁজুন, প্রতিটি অনুসন্ধানে সড়কের রুট আঁকা হয়। API সংযোগ হলে নিরাপত্তার রঙ যোগ হবে।",
+    fastest: "দ্রুততম",
+    shortest: "সংক্ষিপ্ততম",
+    from: "শুরু",
+    to: "গন্তব্য",
+    fromPh: "আপনার ঠিকানা বা বর্তমান অবস্থান",
+    toPh: "বাংলাদেশের যেকোনো স্থান",
+    myLocation: "আপনার বর্তমান অবস্থান",
+    useMyLoc: "আমার অবস্থান ব্যবহার করুন",
+    locating: "খোঁজা হচ্ছে…",
+    findRoute: "রুট খুঁজুন",
+    finding: "রুট খোঁজা হচ্ছে…",
+    loading: "ঠিকানা খুঁজে সড়ক নেটওয়ার্ক আনা হচ্ছে…",
+    chipTo: "গন্তব্য: ",
+    chipDefault: "আপনার রুট",
+    safetyPending: "নিরাপত্তা যাচাই বাকি",
+    geomPre: "প্রতিটি অনুসন্ধানে সড়কের রুট আনা হয়। জলাবদ্ধতার স্কোর চালু হবে যখন",
+    geomPost: "সংযুক্ত হবে।",
+    routesFound: (n) => `সড়ক নেটওয়ার্কে ${n}টি রুট পাওয়া গেছে`,
+    selected: "নির্বাচিত",
+    alternative: "বিকল্প",
+    min: "মিনিট",
+    km: "কিমি",
+    recommended: "প্রস্তাবিত রুট",
+    alternate: "বিকল্প রুট",
+    routeDesc: "উপরের ঠিকানার জন্য গাড়ি চলাচলের রুট। API সংযোগের অপেক্ষায় নিরাপত্তা যাচাই বাকি। দেখতে ট্যাপ করুন।",
+    howTitle: "নিরাপত্তা স্কোর যেভাবে যুক্ত হবে",
+    howBody: "প্রতিটি অংশ একটি নিরাপত্তা গুণক পাবে (পরিষ্কার, অযাচাইকৃত, রিপোর্টকৃত, জলাবদ্ধ) এবং সবচেয়ে কম খরচের নিরাপদ পথ বেছে নেওয়া হবে। সংযোগ হলে এই একই রুটের ওপর সবুজ, হলুদ ও লাল স্তর আঁকা হবে।",
+    emptyTitle: "মানচিত্রে রুট দেখতে গন্তব্য লিখুন",
+    emptyBody: "বাংলাদেশজুড়ে ঠিকানা খোঁজা যায়। আপনার শুরুর স্থান হতে পারে আপনার বর্তমান জিপিএস অবস্থান।",
+    suggestions: "ঠিকানার পরামর্শ",
+    searching: "ঠিকানা খোঁজা হচ্ছে…",
+    notFound: (q) => `"${q}" খুঁজে পাওয়া যায়নি। কাছাকাছি কোনো পরিচিত স্থান লিখে দেখুন।`,
+    generic: "কিছু ভুল হয়েছে। আবার চেষ্টা করুন।",
+    emptyStart: "শুরুর স্থান লিখুন।",
+    emptyDest: "গন্তব্য লিখুন।",
+  },
+};
+
+// The "current location" label exists in both languages; treat either one as the GPS placeholder.
+const isMyLoc = (s) => s === DICT.en.myLocation || s === DICT.bn.myLocation;
 
 function useDebounced(value, ms = 350) {
   const [v, setV] = useState(value);
   useEffect(() => {
-    const t = setTimeout(() => setV(value), ms);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(timer);
   }, [value, ms]);
   return v;
 }
 
 export default function Navigate() {
-  const [from, setFrom] = useState("Your current location");
+  const [lang] = useLang();
+  const t = DICT[lang] || DICT.en;
+
+  const [from, setFrom] = useState(DICT[lang].myLocation);
   const [to, setTo] = useState("");
   const [fromCoord, setFromCoord] = useState(null);
   const [toCoord, setToCoord] = useState(null);
@@ -38,6 +124,11 @@ export default function Navigate() {
   const debouncedTo = useDebounced(suggestFor === "to" ? to : "");
   const debouncedFrom = useDebounced(suggestFor === "from" ? from : "");
 
+  // Keep the "current location" placeholder in the active language
+  useEffect(() => {
+    setFrom((cur) => (isMyLoc(cur) ? DICT[lang].myLocation : cur));
+  }, [lang]);
+
   // Close suggestions on outside click
   useEffect(() => {
     const onDoc = (e) => {
@@ -50,7 +141,7 @@ export default function Navigate() {
   // Live address suggestions (Bangladesh-biased, OpenStreetMap)
   useEffect(() => {
     const q = suggestFor === "to" ? debouncedTo : suggestFor === "from" ? debouncedFrom : "";
-    if (!suggestFor || !q.trim() || q === "Your current location") {
+    if (!suggestFor || !q.trim() || isMyLoc(q)) {
       setSuggestions([]);
       return;
     }
@@ -67,9 +158,9 @@ export default function Navigate() {
   useEffect(() => {
     if (geo.pos && !fromCoord) {
       setFromCoord(geo.pos);
-      setFrom("Your current location");
+      setFrom(t.myLocation);
     }
-  }, [geo.pos, fromCoord]);
+  }, [geo.pos, fromCoord, t.myLocation]);
 
   const pickSuggestion = (which, s) => {
     if (which === "to") {
@@ -85,19 +176,24 @@ export default function Navigate() {
 
   const useMyLocation = () => {
     geo.locate();
-    setFrom("Your current location");
+    setFrom(t.myLocation);
     setFromCoord(null); // resolved from geo.pos by the effect above
+  };
+
+  const emptyMessage = (field) => {
+    if (lang === "en") return emptyPointMessage(field);
+    return field === "starting point" ? t.emptyStart : t.emptyDest;
   };
 
   const resolvePoint = async (text, coord, field) => {
     if (coord) return coord;
-    const t = text.trim();
-    if (!t || (field === "starting point" && t === "Your current location")) {
+    const txt = text.trim();
+    if (!txt || (field === "starting point" && isMyLoc(txt))) {
       if (field === "starting point" && geo.pos) return geo.pos;
-      throw new Error(emptyPointMessage(field));
+      throw new Error(emptyMessage(field));
     }
-    const r = await geocode(t, 1);
-    if (!r.length) throw new Error(`Could not find "${t}". Try a nearby landmark.`);
+    const r = await geocode(txt, 1);
+    if (!r.length) throw new Error(t.notFound(txt));
     return { lat: r[0].lat, lng: r[0].lng };
   };
 
@@ -106,16 +202,16 @@ export default function Navigate() {
     setChecking(true);
     setError("");
     try {
-      const f = await resolvePoint(from, fromCoord, "starting point");
-      const t = await resolvePoint(to, toCoord, "destination");
-      setFromCoord(f);
-      setToCoord(t);
-      const live = await fetchRoutes(f, t);
+      const origin = await resolvePoint(from, fromCoord, "starting point");
+      const dest = await resolvePoint(to, toCoord, "destination");
+      setFromCoord(origin);
+      setToCoord(dest);
+      const live = await fetchRoutes(origin, dest);
       setRoutes(live);
       setSelected(live[0].id);
       setFitSignal((s) => s + 1);
     } catch (err) {
-      setError(err.message || "Something went wrong. Try again.");
+      setError(err.message || t.generic);
       setRoutes([]);
     } finally {
       setChecking(false);
@@ -141,16 +237,16 @@ export default function Navigate() {
   if (toCoord) markers.push({ id: "dest", pos: [toCoord.lat, toCoord.lng], tone: "info" });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" lang={lang}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mt-1 text-[26px] font-bold tracking-tight sm:text-[30px]">Find a safe route</h1>
-          <p className="mt-1 text-[14px] text-slate-600 dark:text-slate-400">Address search with road geometry drawn per search. Safety colors arrive with the API connection.</p>
+          <h1 className="mt-1 text-[26px] font-bold tracking-tight sm:text-[30px]">{t.title}</h1>
+          <p className="mt-1 text-[14px] text-slate-600 dark:text-slate-400">{t.subtitle}</p>
         </div>
         <BeuiTabs value={tab} onValueChange={setTab}>
           <BeuiTabsList>
-            <BeuiTab value="fastest">Fastest</BeuiTab>
-            <BeuiTab value="shortest">Shortest</BeuiTab>
+            <BeuiTab value="fastest">{t.fastest}</BeuiTab>
+            <BeuiTab value="shortest">{t.shortest}</BeuiTab>
           </BeuiTabsList>
         </BeuiTabs>
       </div>
@@ -159,33 +255,33 @@ export default function Navigate() {
         <form onSubmit={check} className="grid gap-3 md:grid-cols-[1fr_1fr_auto]" ref={boxRef}>
           <div className="relative">
             <BeuiInput
-              label="From" value={from}
+              label={t.from} value={from}
               onChange={(e) => { setFrom(e.target.value); setFromCoord(null); setSuggestFor("from"); }}
               onFocus={() => setSuggestFor("from")}
-              placeholder="Your address or current location"
+              placeholder={t.fromPh}
             />
             <div className="mt-1.5">
               <button type="button" onClick={useMyLocation} className="inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-xl px-2 text-[13px] font-bold text-teal-800 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-white/5">
                 <LocateFixed className="h-4 w-4" />
-                {geo.status === "locating" ? "Locating…" : "Use my location"}
+                {geo.status === "locating" ? t.locating : t.useMyLoc}
               </button>
             </div>
             {suggestFor === "from" && (suggestions.length > 0 || suggesting) && (
-              <SuggestionList items={suggestions} loading={suggesting} onPick={(s) => pickSuggestion("from", s)} />
+              <SuggestionList t={t} items={suggestions} loading={suggesting} onPick={(s) => pickSuggestion("from", s)} />
             )}
           </div>
           <div className="relative">
             <BeuiInput
-              label="Destination" value={to}
+              label={t.to} value={to}
               onChange={(e) => { setTo(e.target.value); setToCoord(null); setSuggestFor("to"); }}
               onFocus={() => setSuggestFor("to")}
-              placeholder="Anywhere in Bangladesh"
+              placeholder={t.toPh}
             />
             {suggestFor === "to" && (suggestions.length > 0 || suggesting) && (
-              <SuggestionList items={suggestions} loading={suggesting} onPick={(s) => pickSuggestion("to", s)} />
+              <SuggestionList t={t} items={suggestions} loading={suggesting} onPick={(s) => pickSuggestion("to", s)} />
             )}
           </div>
-          <div className="flex items-end"><BeuiButton type="submit" loading={checking} className="w-full md:w-auto">{checking ? "Finding route…" : "Find route"}</BeuiButton></div>
+          <div className="flex items-end"><BeuiButton type="submit" loading={checking} className="w-full md:w-auto">{checking ? t.finding : t.findRoute}</BeuiButton></div>
         </form>
         {geo.error && !fromCoord && (
           <p className="mt-2 text-[13px] text-slate-500 dark:text-slate-400">{geo.error}</p>
@@ -201,7 +297,7 @@ export default function Navigate() {
             className="mt-4 rounded-2xl bg-slate-950 p-4 text-white" role="status">
             <div className="flex items-center gap-3 text-[14px] font-semibold">
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-teal-300 border-t-transparent" />
-              Geocoding addresses & fetching the road network…
+              {t.loading}
             </div>
           </motion.div>
         )}
@@ -215,17 +311,17 @@ export default function Navigate() {
                 markers={markers}
                 lines={lines}
                 fitSignal={fitSignal}
-                chip={to ? `Route to ${to.slice(0, 42)}` : "Your route"}
+                chip={to ? `${t.chipTo}${to.slice(0, 42)}` : t.chipDefault}
               />
             </div>
             <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 p-4 dark:border-white/10">
-              <BeuiBadge tone="caution">Safety check pending</BeuiBadge>
-              <span className="text-[13px] text-slate-500 dark:text-slate-400">Road geometry is fetched per search. Waterlogging scoring lights up once <span className="font-mono">POST /v1/map/route</span> is connected.</span>
+              <BeuiBadge tone="caution">{t.safetyPending}</BeuiBadge>
+              <span className="text-[13px] text-slate-500 dark:text-slate-400">{t.geomPre} <span className="font-mono">POST /v1/map/route</span> {t.geomPost}</span>
             </div>
           </BeuiCard>
 
           <div className="space-y-3">
-            <p className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">{ordered.length} route{ordered.length > 1 ? "s" : ""} found on the road network</p>
+            <p className="text-[13px] font-semibold text-slate-500 dark:text-slate-400">{t.routesFound(ordered.length)}</p>
             {ordered.map((r) => {
               const isSel = r.id === active.id;
               return (
@@ -233,19 +329,19 @@ export default function Navigate() {
                   whileTap={reduce ? undefined : { scale: 0.985 }}
                   className={`w-full cursor-pointer rounded-2xl border-2 p-4 text-left transition-colors ${isSel ? "border-slate-900 bg-slate-50 dark:border-white dark:bg-white/10" : "border-slate-200 bg-white hover:border-slate-400 dark:border-white/10 dark:bg-transparent dark:hover:border-white/30"}`}>
                   <div className="flex items-center justify-between gap-2">
-                    <BeuiBadge tone={isSel ? "info" : "neutral"}>{isSel ? "Selected" : "Alternative"}</BeuiBadge>
-                    <span className="text-[13px] font-bold text-slate-700 dark:text-slate-200">{r.timeMin} min · {r.distanceKm.toFixed(1)} km</span>
+                    <BeuiBadge tone={isSel ? "info" : "neutral"}>{isSel ? t.selected : t.alternative}</BeuiBadge>
+                    <span className="text-[13px] font-bold text-slate-700 dark:text-slate-200">{r.timeMin} {t.min} · {r.distanceKm.toFixed(1)} {t.km}</span>
                   </div>
                   <p className="mt-2 text-[16px] font-bold tracking-tight">
-                    {r.id === ordered[0].id ? "Recommended route" : "Alternate route"}
+                    {r.id === ordered[0].id ? t.recommended : t.alternate}
                   </p>
-                  <p className="text-[13.5px] text-slate-600 dark:text-slate-400">Driving geometry for the addresses above. Safety check pending API connection. Tap to preview.</p>
+                  <p className="text-[13.5px] text-slate-600 dark:text-slate-400">{t.routeDesc}</p>
                 </motion.button>
               );
             })}
             <BeuiCard className="bg-slate-950 !border-slate-800 p-4 text-white">
-              <p className="text-[13.5px] font-bold text-teal-300">How safety scoring will attach</p>
-              <p className="mt-1 text-[13px] leading-relaxed text-slate-300">Each segment gets a safety multiplier (clear, unverified, reported, waterlogged) and the cheapest safe path wins. The green, yellow, and red overlay draws on this exact geometry once connected.</p>
+              <p className="text-[13.5px] font-bold text-teal-300">{t.howTitle}</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-slate-300">{t.howBody}</p>
             </BeuiCard>
           </div>
         </div>
@@ -253,18 +349,18 @@ export default function Navigate() {
 
       {!active && !checking && !error && (
         <BeuiCard className="p-6 text-center">
-          <p className="text-[15px] font-bold">Type a destination to see its route on the map</p>
-          <p className="mx-auto mt-1 max-w-[52ch] text-[14px] text-slate-500 dark:text-slate-400">Addresses are geocoded across Bangladesh. Your origin can be your current GPS position.</p>
+          <p className="text-[15px] font-bold">{t.emptyTitle}</p>
+          <p className="mx-auto mt-1 max-w-[52ch] text-[14px] text-slate-500 dark:text-slate-400">{t.emptyBody}</p>
         </BeuiCard>
       )}
     </div>
   );
 }
 
-function SuggestionList({ items, loading, onPick }) {
+function SuggestionList({ t, items, loading, onPick }) {
   return (
-    <div className="absolute inset-x-0 top-full z-[700] mt-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-pop dark:border-white/10 dark:bg-slate-900" role="listbox" aria-label="Address suggestions">
-      {loading && items.length === 0 && <p className="px-4 py-3 text-[13.5px] text-slate-500 dark:text-slate-400">Searching addresses…</p>}
+    <div className="absolute inset-x-0 top-full z-[700] mt-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-pop dark:border-white/10 dark:bg-slate-900" role="listbox" aria-label={t.suggestions}>
+      {loading && items.length === 0 && <p className="px-4 py-3 text-[13.5px] text-slate-500 dark:text-slate-400">{t.searching}</p>}
       {items.map((s, i) => (
         <button key={`${s.lat}-${s.lng}-${i}`} type="button" role="option" aria-selected="false"
           onClick={() => onPick(s)}

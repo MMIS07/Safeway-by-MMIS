@@ -71,10 +71,31 @@ body {
 .pressable:active {
   scale: 0.98;
 }
-
 @media (prefers-reduced-motion: reduce) {
   .skeleton { animation: none; }
   .pressable { transition: none; }
   .pressable:active { scale: 1; }
   html { scroll-behavior: auto; }
+}
+.leaflet-container img,
+.leaflet-container .leaflet-tile {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* ── Dashboard floating-panel bottom offsets ─────────────────────────────
+   < lg  : AppShell renders a fixed bottom-nav (pb-28 = 7 rem = 112 px).
+           Add safe-area-inset so panels clear the home indicator on iOS.
+   lg+   : No bottom nav. A comfortable gutter of 1.5 rem (24 px) is enough.
+   A separate toast class adds extra height so toasts sit above the panels.
+   ─────────────────────────────────────────────────────────────────────── */
+.bottom-safe {
+  bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
+}
+.bottom-safe-toast {
+  bottom: calc(8.5rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 1024px) {
+  .bottom-safe       { bottom: 1.5rem; }
+  .bottom-safe-toast { bottom: 2.75rem; }
 }

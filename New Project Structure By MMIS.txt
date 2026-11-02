@@ -1,0 +1,102 @@
+Safeway/
+├── DESIGN.md
+├── README.md
+├── New Update Structure by Shadhin.txt
+├── skills-lock.json
+├── anti-slop/
+│   ├── audit-001-2026-10-14.md
+│   └── fix-report-001-2026-10-14.md
+├── admin/
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── .oxlintrc.json
+│   ├── index.html
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.js
+│   ├── tailwind.config.js
+│   ├── vite.config.js
+│   ├── README.md
+│   ├── public/
+│   │   ├── favicon.svg
+│   │   └── icons.svg
+│   └── src/
+│       ├── App.jsx
+│       ├── main.jsx
+│       ├── index.css
+│       ├── assets/
+│       │   ├── hero.png
+│       │   ├── react.svg
+│       │   └── vite.svg
+│       ├── components/
+│       │   └── ThemeToggle.jsx
+│       ├── lib/
+│       │   ├── cn.js
+│       │   └── theme.jsx
+│       └── pages/
+│           ├── AdminDashboard.jsx
+│           └── AdminLogin.jsx
+└── client/
+    ├── .gitignore
+    ├── .oxlintrc.json
+    ├── index.html                          
+    ├── package.json                         
+    ├── package-lock.json
+    ├── postcss.config.js
+    ├── tailwind.config.js
+    ├── vite.config.js
+    ├── README.md
+    ├── public/
+    │   ├── favicon.svg
+    │   └── icons.svg
+    └── src/
+        ├── App.jsx                         
+        ├── main.jsx
+        ├── index.css
+        ├── assets/
+        │   ├── react.svg
+        │   └── vite.svg
+        ├── components/
+        │   ├── AppShell.jsx
+        │   ├── MapView.jsx
+        │   ├── ThemeToggle.jsx
+        │   ├── beui/
+        │   │   ├── beui.jsx
+        │   │   ├── BeuiBadge.jsx
+        │   │   ├── BeuiButton.jsx
+        │   │   └── BeuiTabs.jsx
+        │   └── auth/                        ← NEW folder
+        │       ├── AuthLayout.jsx           NEW
+        │       ├── AuthFrame.jsx            NEW
+        │       ├── AuthParts.jsx            NEW
+        │       ├── SignIn.jsx               NEW
+        │       ├── SignInScene.jsx          NEW
+        │       ├── signin.css               NEW
+        │       ├── SignUp.jsx               NEW
+        │       ├── SignUpScene.jsx          NEW
+        │       ├── signup.css               NEW
+        │       ├── ForgotPassword.jsx       NEW
+        │       ├── ForgotScene.jsx          NEW
+        │       ├── forgot.css               NEW
+        │       ├── auth.css                 NEW
+        │       └── responsive.css           NEW
+        ├── data/
+        │   └── mockData.js
+        ├── lib/
+        │   ├── cn.js
+        │   ├── ease.js
+        │   ├── theme.jsx
+        │   ├── wipe.js                      NEW
+        │   └── useCooldown.js               NEW
+        ├── pages/
+        │   ├── Auth.jsx                     
+        │   ├── Dashboard.jsx
+        │   ├── Landing.jsx
+        │   ├── MyReports.jsx
+        │   ├── Navigate.jsx
+        │   ├── Profile.jsx
+        │   ├── Report.jsx
+        │   └── Settings.jsx
+        └── services/
+            ├── geo.js
+            └── geo.test.js
